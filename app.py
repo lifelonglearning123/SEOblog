@@ -154,7 +154,7 @@ def streamlit_ui():
     all_results = ""
    #We are just examining one URL for now 
    # num_urls = st.number_input("Which website do you want to analyze?", min_value=1, max_value=1, value=1)
-        article_length = 0
+    article_length = 0
    # if num_urls > 1:
     #    article_length = st.number_input("Enter the expected length of your article in words (minimum 1000 words):", min_value=1000, value=1000)
     num_urls = 1
