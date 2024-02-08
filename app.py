@@ -48,6 +48,9 @@ def is_valid_keyword(keyword):
 
 def get_webpage_content(url):
     try:
+        headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
+        response = requests.get(url, headers=headers)
         response = requests.get(url)
         response.raise_for_status()
         return response.content
@@ -149,12 +152,13 @@ def get_webpage_content(url):
 def streamlit_ui():     
     st.title("SEO Content Writer ")
     all_results = ""
-    num_urls = st.number_input("Which website do you want to analyze?", min_value=1, max_value=1, value=1)
-    article_length = 0
-    if num_urls > 1:
-        article_length = st.number_input("Enter the expected length of your article in words (minimum 1000 words):", min_value=1000, value=1000)
-
-    urls = [st.text_input(f"Please enter webpage URL {i+1}:", key=i) for i in range(num_urls)]
+   #We are just examining one URL for now 
+   # num_urls = st.number_input("Which website do you want to analyze?", min_value=1, max_value=1, value=1)
+        article_length = 0
+   # if num_urls > 1:
+    #    article_length = st.number_input("Enter the expected length of your article in words (minimum 1000 words):", min_value=1000, value=1000)
+    num_urls = 1
+    urls = [st.text_input(f"Please enter webpage URL for keyword analysis {i+1}:", key=i) for i in range(num_urls)]
     article_topic = st.text_input("Enter the topic for your article:")
 
     if st.button("Generate"):
