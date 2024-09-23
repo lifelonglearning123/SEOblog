@@ -14,16 +14,44 @@ nltk.download('stopwords')
 import openai
 from dotenv import load_dotenv
 import os
+from simple_password_auth import authenticate_user  # Import the function from the separate file
+import json
+import re
+from urllib.parse import urlparse
 
 load_dotenv()  # This loads the environment variables from .env
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
+
+def create_filename_from_url(url):
+    parsed_url = urlparse(url)
+    domain = parsed_url.netloc  # Extract domain (e.g., "example.com")
+    # Sanitize domain to remove unwanted characters
+    sanitized_domain = re.sub(r'[^a-zA-Z0-9]', '_', domain)  # Replace non-alphanumeric chars with '_'
+    return f"{sanitized_domain}_content.json"
+
+
+#Declare functions to allow loading of JSON file
+def save_data_to_json(data, filename):
+    """Save the given data to a JSON file."""
+    with open(filename, 'w') as f:
+        json.dump(data, f)
+
+def load_data_from_json(filename="company_brand.json"):
+    """Load data from a JSON file."""
+    try:
+        with open(filename, 'r') as f:
+            data = json.load(f)
+            return data
+    except FileNotFoundError:
+        return None  # File not found, return None
 
 def summary(full_response, all_results):
     #print("**************")
     full_response = "write articles on the following topic: " + full_response + "Use following keywords within the articles " + all_results + "Write a blog in 1500 words. Use descriptive and engaging title. Include target keyword in the title. Use subheadings to break the content. Include a call to action."
     #print(full_response)
     response = openai.chat.completions.create(
-        model="gpt-4-turbo-preview", 
+        model="gpt-4o", 
         messages=[
             {   "role": "system",
             "content" : "You are the best blog writer in the world. Write a blog over 1500 words ",
@@ -205,7 +233,19 @@ def streamlit_ui():
                     for tip in value:
                         st.write(f"- {tip}")
     
-        test = summary(article_topic, all_results)
-        st.write(test)
+
+        # Generate summary with OpenAI GPT
+        blog_content = summary(article_topic, all_results)
+
+        # Create a dynamic filename based on the URL
+        dynamic_filename = create_filename_from_url(url)
+
+        # Save the blog content with a dynamic filename
+        save_data_to_json(blog_content, filename=dynamic_filename)
+
+        st.write(blog_content)
+
 if __name__ == "__main__":
-    streamlit_ui()
+
+    if authenticate_user():  # If authenticated successfully, run the app  
+        streamlit_ui()
