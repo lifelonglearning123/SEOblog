@@ -88,10 +88,10 @@ Begin the article below:
 # User Inputs
 article_length = st.slider(
     "Select the article length (in words)",
-    min_value=100,
-    max_value=2000,
-    value=500,
-    step=50,
+    min_value=10,
+    max_value=450,
+    value=450,
+    step=10,
 )
 
 post_type_options = ["Educational post", "Spicy take", "Head nod"]
