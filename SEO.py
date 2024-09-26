@@ -7,6 +7,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.decomposition import TruncatedSVD
 import string
 import nltk
 nltk.download('punkt')
@@ -18,6 +19,14 @@ from simple_password_auth import authenticate_user  # Import the function from t
 import json
 import re
 from urllib.parse import urlparse
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+import time
+import random
+
+
 
 load_dotenv()  # This loads the environment variables from .env
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -74,19 +83,132 @@ def is_valid_keyword(keyword):
     return len(valid_words) == len(words)
 
 
-def get_webpage_content(url):
+def get_webpage_content(url, session=None):
+    """
+    Fetches the content of a webpage, automatically determining whether to use Selenium for JavaScript-rendered pages.
+
+    Parameters:
+    - url (str): The URL of the webpage to fetch.
+    - session (requests.Session): An optional session object to handle cookies and sessions.
+
+    Returns:
+    - content (str): The HTML content of the webpage.
+    """
     try:
+        # Implement random delay between requests to mimic human behavior
+        time.sleep(random.uniform(1, 5))
+
+        # Headers to mimic a regular browser visit
         headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
-        response = requests.get(url, headers=headers)
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.content
+            'User-Agent': ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                           'AppleWebKit/537.36 (KHTML, like Gecko) '
+                           'Chrome/93.0.4577.63 Safari/537.36'),
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+        }
+
+        # Use requests with a session to handle cookies and sessions
+        if session is None:
+            session = requests.Session()
+        session.headers.update(headers)
+        response = session.get(url)
+
+        # Check for 403 status code
+        if response.status_code == 403:
+            print("Received 403 status code. Switching to Selenium.")
+            content = get_content_with_selenium(url, headers)
+            print("Stage check 403")
+        else:
+            response.raise_for_status()
+            content = response.text
+
+        # Check if content is likely incomplete or empty
+        if is_content_valid(content):
+            return content
+        else:
+            print("Content seems incomplete. Using Selenium for JavaScript-rendered content.")
+            content = get_content_with_selenium(url, headers)
+            print("check is content_valid")
+            return content
+
     except requests.exceptions.HTTPError as http_err:
         print(f"HTTP error occurred: {http_err}")
+        # Optionally try with Selenium
+        print("Trying with Selenium due to HTTP error.")
+        content = get_content_with_selenium(url, headers)
+        return content
     except requests.exceptions.RequestException as req_err:
-        print(f"Error occurred: {req_err}")
+        print(f"Request error occurred: {req_err}")
+        # Optionally try with Selenium
+        print("Trying with Selenium due to Request error.")
+        content = get_content_with_selenium(url, headers)
+        return content
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        return None
 
+def is_content_valid(content):
+    """
+    Checks if the fetched content is valid or likely requires JavaScript rendering.
+
+    Parameters:
+    - content (str): The HTML content of the webpage.
+
+    Returns:
+    - bool: True if content is valid, False if content is likely incomplete.
+    """
+    # Simple heuristic: Check if certain tags or keywords are present
+    soup = BeautifulSoup(content, 'html.parser')
+    # For example, check if there's meaningful content in the <body>
+    body_text = soup.body.get_text(strip=True) if soup.body else ''
+    if len(body_text) > 200:  # Threshold for meaningful content
+        return True
+    else:
+        return False
+
+def get_content_with_selenium(url, headers):
+    """
+    Fetches the content of a webpage using Selenium to render JavaScript.
+
+    Parameters:
+    - url (str): The URL of the webpage to fetch.
+    - headers (dict): A dictionary of HTTP headers.
+
+    Returns:
+    - content (str): The HTML content of the webpage.
+    """
+    # Implement random delay to mimic human behavior
+    time.sleep(random.uniform(1, 5))
+
+    options = Options()
+    options.add_argument('--headless')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument(f'user-agent={headers["User-Agent"]}')
+    options.add_argument('--window-size=1920,1080')
+
+    # Use webdriver_manager to handle ChromeDriver installation
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
+
+    try:
+        driver.get(url)
+        # Wait for the page to fully render
+        time.sleep(random.uniform(2, 5))
+
+        # Scroll to the bottom to trigger dynamic content loading
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(2)  # Wait for the content to load
+
+        content = driver.page_source
+    except Exception as e:
+        print(f"An error occurred while using Selenium: {e}")
+        content = None
+    finally:
+        driver.quit()
+
+    return content
 
 
 def get_first_n_words(text, n=50):
@@ -122,9 +244,19 @@ def get_high_frequency_phrases(text, num=10):
 
 
 def get_lsi_keywords(text, num=10):
+    if isinstance(text, str):
+        documents = [text]
+
+
     documents = re.split(r'(?<=[.!?])\s*', text)
+    if not documents:
+        raise ValueError("The documents are empty after preprocessing.")
+
     vectorizer = TfidfVectorizer()
     tfidf_matrix = vectorizer.fit_transform(documents)
+    print("Vocabulary size:", len(vectorizer.vocabulary_))
+    if len(vectorizer.vocabulary_) == 0:
+        raise ValueError("Vocabulary is empty.")
     cosine_similarities = cosine_similarity(tfidf_matrix, tfidf_matrix)
 
     average_similarities = cosine_similarities.mean(axis=0)
@@ -161,22 +293,33 @@ def best_practices_for_blog(article_length):
         "tips": tips
     }
 
+
 def extract_text_from_html(html_content):
     soup = BeautifulSoup(html_content, 'html.parser')
     paragraphs = soup.find_all('p')
     text = ' '.join([p.get_text() for p in paragraphs])
     return text
 # Assuming your existing functions are defined here as they are
-def get_webpage_content(url):
-    try:
-        response = requests.get(url)
-        response.raise_for_status()  # Raises an HTTPError if the response status code is 4XX/5XX
-        return response.content
-    except requests.exceptions.HTTPError as http_err:
-        st.error(f"HTTP error occurred: {http_err}")  # Use Streamlit's error message display
-    except requests.exceptions.RequestException as req_err:
-        st.error(f"Error occurred: {req_err}")  # Use Streamlit's error message display
-    return None
+
+#Extraction of text when there is no content within a paragraph
+def extract_text_from_html_no_p(html_content):
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    # Exclude unwanted elements
+    for script_or_style in soup(['script', 'style', 'header', 'footer', 'nav', 'aside', 'form']):
+        script_or_style.decompose()
+
+    # Extract text
+    text = soup.get_text(separator=' ', strip=True)
+
+    # Clean up the text
+    text = ' '.join(text.split())
+
+    return text
+
+
 def streamlit_ui():     
     st.title("SEO Content Writer ")
     all_results = ""
@@ -197,7 +340,8 @@ def streamlit_ui():
                     st.write("Failed to retrieve content, please check the URL and try again.")
                     continue  # Skip further processing for this URL
                 text = extract_text_from_html(html_content)
-
+                if len(text)<10:
+                    text = extract_text_from_html_no_p(html_content)
                 lsi_keywords = get_lsi_keywords(text)
                 high_freq_keywords = get_high_frequency_words(text)
                 high_freq_phrases = get_high_frequency_phrases(text)

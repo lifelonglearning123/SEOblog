@@ -25,6 +25,11 @@ def set_custom_css():
 # Apply the custom CSS
 set_custom_css()
 
+def autosave_csv(df):
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f'autosave_{timestamp}.csv'
+    df.to_csv(filename, index=False)
+
 # Generate a sample DataFrame with more rows
 def generate_sample_data(start_date, start_time, days):
     start_datetime = datetime.combine(start_date, start_time)
@@ -57,17 +62,31 @@ start_time = st.time_input("Select the start time for each post")
 # Add slider for controlling the number of days
 days = st.slider("Select number of days for the calendar", min_value=1, max_value=30, value=30)
 
-# Generate the DataFrame
-generated_df = generate_sample_data(start_date, start_time, days)
+# Initialize session state for the DataFrame
+if 'generated_df' not in st.session_state:
+    st.session_state['generated_df'] = generate_sample_data(start_date, start_time, days)
+
+# Button to generate or regenerate the calendar
+if st.button("Generate Calendar"):
+    st.session_state['generated_df'] = generate_sample_data(start_date, start_time, days)
 
 # Display the editable table
 st.write("Below is the generated content. You can edit it as needed:")
-edited_df = st.data_editor(generated_df, num_rows="dynamic", height=400)
+edited_df = st.data_editor(
+    st.session_state['generated_df'],
+    num_rows="dynamic",
+    height=400,
+    key='data_editor'
+)
 
+# Update the DataFrame in session_state after editing
+st.session_state['generated_df'] = edited_df
+autosave_csv(st.session_state['generated_df']),
 # Provide a download button for the edited DataFrame
 st.download_button(
+
     label="Download Social Media Calendar",
-    data=download_csv(edited_df),
+    data=download_csv(st.session_state['generated_df']),
     file_name="social_media_content.csv",
     mime="text/csv"
 )
