@@ -9,7 +9,7 @@ def set_custom_css():
         <style>
         /* Increase the width of the main content */
         .main {
-            max-width: 1200px;
+            max-width: 90vw; /* Set the width to 90% of the viewport width */
             padding-left: 20px;
             padding-right: 20px;
         }
