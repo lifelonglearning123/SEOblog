@@ -153,13 +153,7 @@ def get_webpage_content(url, session=None):
             'Accept-Language': 'en-US,en;q=0.9',
             'Accept-Encoding': 'gzip, deflate, br',
         }
-        """
-        # Use requests with a session to handle cookies and sessions
-        if session is None:
-            session = requests.Session()
-        session.headers.update(headers)
-        response = session.get(url)
-        """
+
         client = ZenRowsClient("ff2968811cfac24356bb7e0bcfdc434ca99951d2")
         response = client.get(url)
         print("This is benefiz response", response)
