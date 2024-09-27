@@ -24,6 +24,7 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 import time
 import random
+from zenrows import ZenRowsClient
 
 # Load environment variables and set OpenAI API key
 load_dotenv()
@@ -152,13 +153,16 @@ def get_webpage_content(url, session=None):
             'Accept-Language': 'en-US,en;q=0.9',
             'Accept-Encoding': 'gzip, deflate, br',
         }
-
+        """
         # Use requests with a session to handle cookies and sessions
         if session is None:
             session = requests.Session()
         session.headers.update(headers)
         response = session.get(url)
-
+        """
+        client = ZenRowsClient("ff2968811cfac24356bb7e0bcfdc434ca99951d2")
+        response = client.get(url)
+        print("This is benefiz response", response)
         # Check for 403 status code
         if response.status_code == 403:
             print("Received 403 status code. Switching to Selenium.")
