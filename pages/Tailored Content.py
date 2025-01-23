@@ -130,8 +130,8 @@ def main():
     article_length = st.slider(
         "Select the article length (in words)",
         min_value=50,
-        max_value=450,
-        value=450,
+        max_value=1000,
+        value=200,
         step=50,
     )
 
