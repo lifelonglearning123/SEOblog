@@ -113,11 +113,11 @@ def main():
         st.session_state['youtube_summary'] = None
 
     # Set the title of the app
-    st.title("LinkedIn Article Generator")
+    st.title("Tailored Conent")
 
     # Display the transcription in a text area if available
     if st.session_state.get('youtube_summary'):
-        st.subheader("YouTube Summary")
+        st.subheader("SEO Long Content")
         st.text_area("Transcription:", st.session_state['youtube_summary'], height=200)
     else:
         st.warning("No transcription data found. Please use the SEO tab to create an article.")
@@ -138,7 +138,7 @@ def main():
     # Select post type
     post_type_options = ["Educational post", "Spicy take", "Head nod"]
     post_type = st.selectbox(
-        "What kind of LinkedIn post do you want to create?",
+        "What kind of post do you want to create?",
         post_type_options,
         index=0,
     )
@@ -152,7 +152,7 @@ def main():
         "The Hot Industry Take",
     ]
     post_style = st.selectbox(
-        "What kind of LinkedIn post style do you want?",
+        "What kind of post style do you want?",
         post_style_options,
         index=0,
     )
